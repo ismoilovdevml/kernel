@@ -4,6 +4,7 @@
 #define BLACK 0
 #define GREEN 2
 #define RED 4
+#define GREEN
 #define YELLOW 14
 #define WHITE_COLOR 15
 
@@ -39,8 +40,8 @@ void main(void)
     vga_index = 0;
 
     clear_screen();
-    print_string("Hello from Linux Journal!", YELLOW);
+    print_string("Kernel ishga tushdi demak to'gri yozilgan :)", YELLOW);
     vga_index = 80;    /* next line */
-    print_string("Goodbye from Linux Journal!", RED);
+    print_string("Open Sourse Kernel", RED);
     return;
 }
