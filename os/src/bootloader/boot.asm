@@ -75,7 +75,39 @@ main:
 .halt:
 	jmp .halt
 
-msg_salom: db 'Salom Dasturchi', ENDL, 0
+;
+; Disk routines
+;
+;
+; Converts an LBA address to a CHS address
+; Parameters;
+;	- ax: LDA address
+; Returns;
+;	- cx [bits 0-5]: sector number
+;	- cx [bits 6-15]: cylinder
+;	- dh: head
+;
+
+lba_to_chs:
+
+	xor dx, dx							; dx = 0
+	div word [bdb_sectors_per_track]	; ax = LBA / SectorPerTrack
+										; dx = LBA % SectorPerTrack
+
+	inc dx								; dx = (LBA % SectorPerTrack + 1) = sector
+	mov cx, dx							; cx = sector
+
+	xor dx, dx							; dx = 0
+	diw word [bdb_heads]				; ax = (LBA / SectorsPerTrackk) / Heads = cylinder
+										; dx = (LBA / SectorsPerTrack) % Heads = head
+
+	mov dh, dl							; dh = head
+	mov ch, al							; ch = cylinder
+	shl ah, 6
+	or cl, ah							; put upper 2 bits of cylinder in CL
+
+
+msg_salom: db 'Hello Worls!', ENDL, 0
 
 
 times 510-($-$$) db 0
