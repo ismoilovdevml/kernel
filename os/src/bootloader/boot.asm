@@ -72,8 +72,21 @@ main:
 
 	hlt
 	
+floppy_error:
+	mov si, msg_read_failed
+	call puts
+	jmp wait_key_and_reboot
+
+
+wait_key_and_reboot:
+	mov ah, 0
+	int 16h						; wiat for keypress
+	jmp 0FFFFh:0				; jump to beginning of BIOS, shoud reboot
+
+
 .halt:
-	jmp .halt
+	cli							; disable interrupts, this way se CPU can't get out of "halt" state
+	hlt
 
 ;
 ; Disk routines
@@ -89,6 +102,9 @@ main:
 ;
 
 lba_to_chs:
+
+	push ax
+	push dx
 
 	xor dx, dx							; dx = 0
 	div word [bdb_sectors_per_track]	; ax = LBA / SectorPerTrack
@@ -106,9 +122,52 @@ lba_to_chs:
 	shl ah, 6
 	or cl, ah							; put upper 2 bits of cylinder in CL
 
+	pop ax
+	mov dl, al							; restore DL
+	pop ax
+	ret
 
-msg_salom: db 'Hello Worls!', ENDL, 0
+;
+; Reads sectors from a disk
+; Parametres:
+;	- ax: LBA address
+; 	- cl: number pf sectors to read (up to 128)
+;	- dl: drive number
+;	- es:bx: memory address where to store read data
+;
+
+disk_read:
+	push cx								; temporarrily save CL (number of sectors  to read)
+	call lba_to_chs						; compute CHS
+	pop ax								; AL = number of sectors to read
+
+	mov ah, 02h
+	mov di, 3							; retry count
+
+.retry:
+	pusha								; save all registers, we don't know what bios modifies
+	stack								; set carry flag, some BIOS'es don't set it
+	int 13h								; carry flag cleared = success
+	jnc .done							; jump if carry not set
+
+	; read failed
+	popa
+	call disk_reset
+
+	dec di
+	test di, di
+	jnz .retry
+
+.fail:
+	; all attempts are exhausted
+
+	jmp floppy_error
+.done:
+	popa
+
+msg_salom:					db 'Hello Worls!', ENDL, 0
+msg_read_failed:			db 'Read from disk faied!', ENDL, 0	
 
 
 times 510-($-$$) db 0
-dw 0xAA55
+dw 0xAA55h
