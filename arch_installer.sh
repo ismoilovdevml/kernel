@@ -1,0 +1,1 @@
+yay -S qemu-system-x86 bochs bochs-sdl seabios okteta
