@@ -63,10 +63,20 @@ main:
 	mov ds, ax
 	mov es, ax
 
-	; setup stack
-	mov ss, ax
-	mov sp, 0x7C00
 
+	mov ss, ax
+	mov sp, 0x7C00						; setup stack
+
+	; read something form floppy disk
+	; BIOS should set DL to drive number
+	mov [ebr_drive_number]. dl
+
+	mov ax, 1							; LBA=1, second sector form disk
+	mov cl, 1							; 1 sector to read
+	mov bx, 0x7E00						; data should be after the bootloader
+	call disk_read
+
+	; print hello worls message
 	mov si, msg_salom
 	call puts
 
@@ -80,12 +90,12 @@ floppy_error:
 
 wait_key_and_reboot:
 	mov ah, 0
-	int 16h						; wiat for keypress
-	jmp 0FFFFh:0				; jump to beginning of BIOS, shoud reboot
+	int 16h								; waiat for keypress
+	jmp 0FFFFh:0						; jump to beginning of BIOS, should reboot
 
 
 .halt:
-	cli							; disable interrupts, this way se CPU can't get out of "halt" state
+	cli									; disable interrupts, this way se CPU can't get out of "halt" state
 	hlt
 
 ;
@@ -137,6 +147,14 @@ lba_to_chs:
 ;
 
 disk_read:
+
+	push ax								; save registers we will modify
+	push bx
+	push cx
+	push dx
+	push di
+
+
 	push cx								; temporarrily save CL (number of sectors  to read)
 	call lba_to_chs						; compute CHS
 	pop ax								; AL = number of sectors to read
@@ -165,9 +183,32 @@ disk_read:
 .done:
 	popa
 
+
+	push di
+	push dx
+	push cx
+	push bx
+	push ax								; restore registers  modified
+	ret 
+
+;
+; Resets disk controller
+; Parameters:
+;	dl: drive number
+;
+
+disk_reset:
+	pusha
+	mov ah, 0
+	stc
+	int 13h
+	jc floppy_error
+	popa
+	ret
+
 msg_salom:					db 'Hello Worls!', ENDL, 0
 msg_read_failed:			db 'Read from disk faied!', ENDL, 0	
 
 
 times 510-($-$$) db 0
-dw 0xAA55h
+dw 0xAA55
